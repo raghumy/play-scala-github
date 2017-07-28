@@ -13,8 +13,9 @@ import scala.concurrent.{ExecutionContext, Future}
  * application's home page.
  */
 @Singleton
-class GithubController @Inject()(cached: Cached, cc: ControllerComponents, ws: WSClient)(implicit ec: ExecutionContext) extends AbstractController(cc) {
+class GithubController @Inject()(cached: Cached, cc: ControllerComponents, ws: WSClient, configuration: play.api.Configuration)(implicit ec: ExecutionContext) extends AbstractController(cc) {
   private val logger = Logger(getClass)
+  private val token = configuration.underlying.getString("github.token")
   /**
    * Create an Action to render an HTML page.
    *
@@ -32,15 +33,15 @@ class GithubController @Inject()(cached: Cached, cc: ControllerComponents, ws: W
 
   def showMembers(org: String) = Action.async { implicit request =>
     logger.trace(s"showMembers: org = $org")
-    val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/members").addHttpHeaders("Authorization" -> "token 963c6ccc897bdb841a4cd5260f21734124a860b6")
+    val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/members").addHttpHeaders("Authorization" -> s"token $token")
 
     complexRequest.get().map { response => Ok(response.json)}
   }
 
   def showMembersCached(org: String) = cached(implicit request => s"$org/members", 30) {
     Action.async { implicit request =>
-      logger.trace(s"showMembersCached: org = $org")
-      val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/members").addHttpHeaders("Authorization" -> "token 963c6ccc897bdb841a4cd5260f21734124a860b6")
+      logger.trace(s"showMembersCached: org = $org, token = $token")
+      val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/members").addHttpHeaders("Authorization" -> s"token $token")
 
       complexRequest.get().map { response => Ok(response.json)}
     }
@@ -48,15 +49,15 @@ class GithubController @Inject()(cached: Cached, cc: ControllerComponents, ws: W
 
   def showRepos(org: String) = Action.async { implicit request =>
     logger.trace(s"showMembers: org = $org")
-    val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/repos").addHttpHeaders("Authorization" -> "token 963c6ccc897bdb841a4cd5260f21734124a860b6")
+    val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/repos").addHttpHeaders("Authorization" -> s"token $token")
 
     complexRequest.get().map { response => Ok(response.json)}
   }
 
   def showReposCached(org: String) = cached(implicit request => s"$org/repos", 30) {
     Action.async { implicit request =>
-      logger.trace(s"showReposCached: org = $org")
-      val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/repos").addHttpHeaders("Authorization" -> "token 963c6ccc897bdb841a4cd5260f21734124a860b6")
+      logger.trace(s"showReposCached: org = $org, token = $token")
+      val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/repos").addHttpHeaders("Authorization" -> s"token $token")
 
       complexRequest.get().map { response => Ok(response.json)}
     }
