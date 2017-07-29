@@ -18,7 +18,7 @@ import scala.concurrent.{ Future, ExecutionContext }
   * @param dbConfigProvider The Play db config provider. Play will inject this for you.
   */
 @Singleton
-class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider, repodb: RepoRepository)(implicit ec: ExecutionContext) {
+class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider, repodb: RepoRepository, datadb: OrgDataRepository)(implicit ec: ExecutionContext) {
   // We want the JdbcProfile for this provider
   private val dbConfig = dbConfigProvider.get[JdbcProfile]
   private val logger = Logger(getClass)
@@ -39,6 +39,10 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
     /** The name column is the primary key*/
     def name = column[String]("name")
 
+    def last_updated = column[Long]("last_updated", O.Default(0))
+
+    def state = column[Option[String]]("state")
+
     /**
       * This is the tables default "projection".
       *
@@ -47,7 +51,7 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
       * In this case, we are simply passing the name parameters to the Organization case classes
       * apply and unapply methods.
       */
-    def * = (id, name) <> ((Organization.apply _).tupled, Organization.unapply)
+    def * = (id, name, last_updated, state) <> ((Organization.apply _).tupled, Organization.unapply)
   }
 
   /**
@@ -55,23 +59,10 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
     */
   private val organization = TableQuery[OrganizationTable]
 
-  /**
-    * Create a person with the given name.
-    *
-    * This is an asynchronous operation, it will return a future of the created person, which can be used to obtain the
-    * id for that person.
-    */
-  def create(name: String): Future[Organization] = db.run {
-    // We create a projection of just the name and age columns, since we're not inserting a value for the id column
-    (organization.map(p => (p.name))
-      // Now define it to return the id, because we want to know what id was generated for the person
-      returning organization.map(_.id)
-      // And we define a transformation for the returned value, which combines our original parameters with the
-      // returned id
-      into ((name, id) => Organization(id, name))
-      // And finally, insert the person into the database
-      ) += (name)
-  }
+  def insert(o: Organization) =
+    organization returning organization.map(_.id) += o
+
+  def create(org: String) = insert(Organization(0, org, 0, None))
 
   /**
     * List all the organizations in the database.
@@ -84,6 +75,13 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
     organization.filter(_.name === org).result.headOption
 
   def findOrg(org: String): Future[Option[Organization]] = db.run(_findByName(org))
+
+  def getOrgData(org: String) = datadb.findByOrg(org)
+
+  def addOrg(org: String) = Future {
+    db.run(create(org) andThen
+      datadb.create(org))
+  }
 
   def updateStats(org: String, json: JsValue) = Future {
     implicit val repoReads = (

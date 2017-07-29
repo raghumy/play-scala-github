@@ -26,7 +26,7 @@ class GithubRouter @Inject()(controller: GithubController) extends SimpleRouter 
       controller.addOrganization(org)
 
     case GET(p"/orgs/$org/members") =>
-      controller.showMembersCached(org)
+      controller.showMembers(org)
 
     case GET(p"/orgs/$org/repos") =>
       controller.showRepos(org)

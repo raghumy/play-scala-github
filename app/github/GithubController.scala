@@ -7,6 +7,7 @@ import play.api.mvc._
 import play.api.libs.ws._
 import play.api.cache.Cached
 import dal._
+import models._
 import play.api.libs.json._
 
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -44,35 +45,26 @@ class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, c
 
   def showMembers(org: String) = Action.async { implicit request =>
     logger.trace(s"showMembers: org = $org")
-    val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/members").addHttpHeaders("Authorization" -> s"token $token")
-
-    complexRequest.get().map { response => Ok(response.json)}
-  }
-
-  def showMembersCached(org: String) = cached(implicit request => s"$org/members", 30) {
-    Action.async { implicit request =>
-      logger.trace(s"showMembersCached: org = $org, token = $token")
-      val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/members").addHttpHeaders("Authorization" -> s"token $token")
-
-      complexRequest.get().map { response => Ok(response.json)}
+    repo.getOrgData(org).map { od =>
+      od match
+      {
+        case Some(od) => Ok(Json.toJson(od.members_json))
+        case None => {
+          Ok("Data not found")
+        }
+      }
     }
   }
 
   def showRepos(org: String) = Action.async { implicit request =>
-    logger.trace(s"showMembers: org = $org")
-    val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/repos").addHttpHeaders("Authorization" -> s"token $token")
-
-    complexRequest.get().map { response => {
-      /*
-      Await.ready(repo.updateStats(org, response.json).map { _ =>
-        logger.trace(s"showMembers: Status updated for org = $org")
-      })
-      repo.updateStats(org, response.json).onComplete {
-          case Success(result) => logger.trace(s"showMembers: Status updated for org = $org")
-          case Failure(e) => logger.error("Exception", e)
-      }
-      */
-      Ok(response.json)
+    logger.trace(s"showRepos: org = $org")
+    repo.getOrgData(org).map { od =>
+      od match
+      {
+        case Some(od) => Ok(Json.toJson(od.repos_json))
+        case None => {
+          Ok("Data not found")
+        }
       }
     }
   }
@@ -104,11 +96,14 @@ class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, c
         case Some(o) => Ok(s"Organization $org exists")
         case None => {
           logger.trace(s"Creating organization $org")
+          Await.result(util.addOrg(org), 1 minute)
+          /*
           Await.result(repo.create(org).map { _ =>
-            util.updateRepos(org)
+            util.updateOrg(org)
             Ok(s"Organization $org added")
           }, 1 minute
-          )
+          */
+          Ok(s"Organization $org added")
         }
       }
     }
