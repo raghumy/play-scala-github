@@ -99,9 +99,11 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
 
     logger.trace(s"json parsed ${repos.size}")
 
-    repodb._deleteAllInOrg(org)
+    db.run(repodb._deleteAllInOrg(org) andThen
+      repodb.bulkInsert(repos)
+    )
 
-    repos.map(repodb.insert)
+    logger.trace("All rows inserted")
   }
 
   def getStats(org: String) = repodb.findByOrg(org)

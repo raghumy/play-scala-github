@@ -67,13 +67,15 @@ class RepoRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(implic
     db.run(repos.filter(_.org === org).to[List].result)
 
   def statsByForks(org: String, n: Int): Future[List[Repo]] =
-    db.run(repos.filter(_.org === org).sortBy(_.forks).take(n).to[List].result)
+    db.run(repos.filter(_.org === org).sortBy(_.forks.desc).take(n).to[List].result)
 
-  def insert(repo: Repo) = db.run {
+  def insert(repo: Repo) =
     repos returning repos.map(_.id) += repo
-  }
 
-  def _deleteAllInOrg(org: String) = db.run {
+  def bulkInsert(l:List[Repo]) =
+    repos ++= l
+
+  def _deleteAllInOrg(org: String) =
     repos.filter(_.org === org).delete
-  }
+
 }
