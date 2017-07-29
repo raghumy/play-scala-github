@@ -18,7 +18,7 @@ import scala.util.{Failure, Success}
  * application's home page.
  */
 @Singleton
-class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, cc: ControllerComponents, ws: WSClient, configuration: play.api.Configuration)(implicit ec: ExecutionContext) extends AbstractController(cc) {
+class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, cc: ControllerComponents, ws: WSClient, configuration: play.api.Configuration, util: GithubUtil)(implicit ec: ExecutionContext) extends AbstractController(cc) {
   private val logger = Logger(getClass)
   private val token = configuration.underlying.getString("github.token")
   /**
@@ -67,11 +67,11 @@ class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, c
       Await.ready(repo.updateStats(org, response.json).map { _ =>
         logger.trace(s"showMembers: Status updated for org = $org")
       })
-      */
       repo.updateStats(org, response.json).onComplete {
           case Success(result) => logger.trace(s"showMembers: Status updated for org = $org")
           case Failure(e) => logger.error("Exception", e)
       }
+      */
       Ok(response.json)
       }
     }
@@ -79,14 +79,6 @@ class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, c
 
   def showReposCached(org: String) = cached(implicit request => s"$org/repos", 30) {
     showRepos(org)
-    /*
-    Action.async { implicit request =>
-      logger.trace(s"showReposCached: org = $org, token = $token")
-      val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/repos").addHttpHeaders("Authorization" -> s"token $token")
-
-      complexRequest.get().map { response => Ok(response.json)}
-    }
-    */
   }
 
   def showRepoStats(org: String) = Action.async { implicit request =>
@@ -113,8 +105,9 @@ class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, c
         case None => {
           logger.trace(s"Creating organization $org")
           Await.result(repo.create(org).map { _ =>
+            util.updateRepos(org)
             Ok(s"Organization $org added")
-          }, 30 seconds
+          }, 1 minute
           )
         }
       }

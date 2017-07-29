@@ -19,10 +19,10 @@ class GithubRouter @Inject()(controller: GithubController) extends SimpleRouter 
     case GET(p"/orgs/") =>
       controller.showOrgIndex()
 
-    case PUT(p"/orgs/$org/") =>
+    case PUT(p"/orgs/$org") =>
       controller.addOrganization(org)
 
-    case POST(p"/orgs/$org/") =>
+    case POST(p"/orgs/$org") =>
       controller.addOrganization(org)
 
     case GET(p"/orgs/$org/members") =>
