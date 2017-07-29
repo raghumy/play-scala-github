@@ -4,6 +4,7 @@ import javax.inject.{ Inject, Singleton }
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
 import play.api.Logger
+import java.sql.Timestamp
 
 import models._
 
@@ -39,7 +40,7 @@ class RepoRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(implic
 
     def forks = column[Int]("forks")
 
-    def last_updated = column[Long]("last_updated")
+    def last_updated = column[Timestamp]("last_updated")
 
     def open_issues = column[Int]("open_issues")
 
@@ -68,6 +69,18 @@ class RepoRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(implic
 
   def statsByForks(org: String, n: Int): Future[List[Repo]] =
     db.run(repos.filter(_.org === org).sortBy(_.forks.desc).take(n).to[List].result)
+
+  def statsByLastUpdated(org: String, n: Int): Future[List[Repo]] =
+    db.run(repos.filter(_.org === org).sortBy(_.last_updated.desc).take(n).to[List].result)
+
+  def statsByOpenIssues(org: String, n: Int): Future[List[Repo]] =
+    db.run(repos.filter(_.org === org).sortBy(_.open_issues.desc).take(n).to[List].result)
+
+  def statsByStars(org: String, n: Int): Future[List[Repo]] =
+    db.run(repos.filter(_.org === org).sortBy(_.stars.desc).take(n).to[List].result)
+
+  def statsByWatchers(org: String, n: Int): Future[List[Repo]] =
+    db.run(repos.filter(_.org === org).sortBy(_.watchers.desc).take(n).to[List].result)
 
   def insert(repo: Repo) =
     repos returning repos.map(_.id) += repo

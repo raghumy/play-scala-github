@@ -85,6 +85,18 @@ class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, c
     }
   }
 
+  def showStatsByType(org: String, n: String, t: String) = Action.async { implicit request => {
+      t match {
+        case "forks" => repo.getStatsByForks(org, n.toInt).map(stats => Ok(Json.toJson(stats)))
+        case "last_updated" => repo.getStatsByLastUpdated(org, n.toInt).map(stats => Ok(Json.toJson(stats)))
+        case "open_issues" => repo.getStatsByOpenIssues(org, n.toInt).map(stats => Ok(Json.toJson(stats)))
+        case "stars" => repo.getStatsByStars(org, n.toInt).map(stats => Ok(Json.toJson(stats)))
+        case "watchers" => repo.getStatsByWatchers(org, n.toInt).map(stats => Ok(Json.toJson(stats)))
+        case _ => Future(NotFound(s"Stat $t not found"))
+      }
+    }
+  }
+
   /**
     * The add person action.
     *

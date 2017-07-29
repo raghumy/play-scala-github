@@ -1,16 +1,19 @@
 package dal
 
-import javax.inject.{ Inject, Singleton }
+import java.sql.Timestamp
+import java.text.SimpleDateFormat
+import javax.inject.{Inject, Singleton}
+
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
 import play.api.libs.json._
 import play.api.libs.json.Reads._
 import play.api.libs.functional.syntax._
 import play.api.Logger
-
 import models._
+import slick.dbio.DBIOAction
 
-import scala.concurrent.{ Future, ExecutionContext }
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * A repository for people.
@@ -39,7 +42,7 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
     /** The name column is the primary key*/
     def name = column[String]("name")
 
-    def last_updated = column[Long]("last_updated", O.Default(0))
+    def last_updated = column[Timestamp]("last_updated", O.Default(new Timestamp(0L)))
 
     def state = column[Option[String]]("state")
 
@@ -62,7 +65,7 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
   def insert(o: Organization) =
     organization returning organization.map(_.id) += o
 
-  def create(org: String) = insert(Organization(0, org, 0, None))
+  def create(org: String) = insert(Organization(0, org, new Timestamp(new java.util.Date().getTime()), None))
 
   /**
     * List all the organizations in the database.
@@ -83,15 +86,31 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
       datadb.create(org))
   }
 
+  def updateLastUpdated(org: String) = db.run {
+    organization.filter(_.name === org).map(_.last_updated).update(new Timestamp(new java.util.Date().getTime()))
+  }
+
   def updateStats(org: String, json: JsValue) = Future {
+
+    // Need to figure out if we can do this once
+    implicit object timestampFormat extends Format[Timestamp] {
+      val format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+      def reads(json: JsValue) = {
+        val str = json.as[String]
+        JsSuccess(new Timestamp(format.parse(str).getTime))
+      }
+      def writes(ts: Timestamp) = JsString(format.format(ts))
+    }
+
+
     implicit val repoReads = (
         (JsPath \\ "name").read[String] and
           (JsPath \\ "forks_count").read[Int] and
-          // Skip last_updated
+          (JsPath \\ "updated_at").read[Timestamp] and
           (JsPath \\ "open_issues_count").read[Int] and
             (JsPath \\ "stargazers_count").read[Int] and
             (JsPath \\ "watchers_count").read[Int]
-      )(Repo.apply(0L,_,org,_,0L,_,_,_))
+      )(Repo.apply(0L,_,org,_,_,_,_,_))
 
     val repos:List[Repo] = json.as[List[models.Repo]]
 
@@ -101,10 +120,20 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
       repodb.bulkInsert(repos)
     )
 
+    updateLastUpdated(org)
+
     logger.trace("All rows inserted")
   }
 
   def getStats(org: String) = repodb.findByOrg(org)
 
   def getStatsByForks(org: String, n: Int) = repodb.statsByForks(org, n)
+
+  def getStatsByLastUpdated(org: String, n: Int) = repodb.statsByLastUpdated(org, n)
+
+  def getStatsByOpenIssues(org: String, n: Int) = repodb.statsByOpenIssues(org, n)
+
+  def getStatsByStars(org: String, n: Int) = repodb.statsByStars(org, n)
+
+  def getStatsByWatchers(org: String, n: Int) = repodb.statsByWatchers(org, n)
 }

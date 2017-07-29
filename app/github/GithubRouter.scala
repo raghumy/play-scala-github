@@ -16,7 +16,7 @@ class GithubRouter @Inject()(controller: GithubController) extends SimpleRouter 
     case GET(p"/") =>
       controller.index
 
-    case GET(p"/orgs/") =>
+    case GET(p"/orgs") =>
       controller.showOrgIndex()
 
     case PUT(p"/orgs/$org") =>
@@ -34,8 +34,8 @@ class GithubRouter @Inject()(controller: GithubController) extends SimpleRouter 
     case GET(p"/views/$org/stats") =>
       controller.showRepoStats(org)
 
-    case GET(p"/views/$org/top/$n/forks") =>
-      controller.showStatsByForks(org, n)
+    case GET(p"/views/$org/top/$n/$t") =>
+      controller.showStatsByType(org, n, t)
   }
 
 }
