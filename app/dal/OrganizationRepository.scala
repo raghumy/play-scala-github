@@ -103,4 +103,8 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
 
     repos.map(repodb.insert)
   }
+
+  def getStats(org: String) = repodb.findByOrg(org)
+
+  def getStatsByForks(org: String, n: Int) = repodb.statsByForks(org, n)
 }

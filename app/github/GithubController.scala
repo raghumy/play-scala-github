@@ -11,6 +11,7 @@ import play.api.libs.json._
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 /**
  * This controller creates an `Action` to handle HTTP requests to the
@@ -62,9 +63,15 @@ class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, c
     val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/repos").addHttpHeaders("Authorization" -> s"token $token")
 
     complexRequest.get().map { response => {
-      Await.result(repo.updateStats(org, response.json).map { _ =>
+      /*
+      Await.ready(repo.updateStats(org, response.json).map { _ =>
         logger.trace(s"showMembers: Status updated for org = $org")
-      }, 60 seconds)
+      })
+      */
+      repo.updateStats(org, response.json).onComplete {
+          case Success(result) => logger.trace(s"showMembers: Status updated for org = $org")
+          case Failure(e) => logger.error("Exception", e)
+      }
       Ok(response.json)
       }
     }
@@ -80,6 +87,18 @@ class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, c
       complexRequest.get().map { response => Ok(response.json)}
     }
     */
+  }
+
+  def showRepoStats(org: String) = Action.async { implicit request =>
+    repo.getStats(org).map { stats =>
+      Ok(Json.toJson(stats))
+    }
+  }
+
+  def showStatsByForks(org: String, n: String) = Action.async { implicit request =>
+    repo.getStatsByForks(org, n.toInt).map { stats =>
+      Ok(Json.toJson(stats))
+    }
   }
 
   /**
@@ -100,6 +119,7 @@ class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, c
         }
       }
     }
+
     /*
     repo.findOrg(org).map(o => match {
       case Some(o) => Ok(s"Organization $org exists")

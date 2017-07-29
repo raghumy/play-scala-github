@@ -66,6 +66,9 @@ class RepoRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(implic
   def findByOrg(org: String): Future[List[Repo]] =
     db.run(repos.filter(_.org === org).to[List].result)
 
+  def statsByForks(org: String, n: Int): Future[List[Repo]] =
+    db.run(repos.filter(_.org === org).sortBy(_.forks).take(n).to[List].result)
+
   def insert(repo: Repo) = db.run {
     repos returning repos.map(_.id) += repo
   }
