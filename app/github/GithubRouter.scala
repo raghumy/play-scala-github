@@ -16,14 +16,20 @@ class GithubRouter @Inject()(controller: GithubController) extends SimpleRouter 
     case GET(p"/") =>
       controller.index
 
-    case GET(p"/orgs/$org/") =>
-      controller.showOrgIndex(org)
+    case GET(p"/orgs/") =>
+      controller.showOrgIndex()
+
+    case PUT(p"/orgs/$org/") =>
+      controller.addOrganization(org)
+
+    case POST(p"/orgs/$org/") =>
+      controller.addOrganization(org)
 
     case GET(p"/orgs/$org/members") =>
       controller.showMembersCached(org)
 
     case GET(p"/orgs/$org/repos") =>
-      controller.showReposCached(org)
+      controller.showRepos(org)
   }
 
 }

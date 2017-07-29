@@ -1,19 +1,23 @@
 package github
 
 import javax.inject._
+
 import play.api.Logger
 import play.api.mvc._
 import play.api.libs.ws._
 import play.api.cache.Cached
+import dal._
+import play.api.libs.json._
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.duration._
 
 /**
  * This controller creates an `Action` to handle HTTP requests to the
  * application's home page.
  */
 @Singleton
-class GithubController @Inject()(cached: Cached, cc: ControllerComponents, ws: WSClient, configuration: play.api.Configuration)(implicit ec: ExecutionContext) extends AbstractController(cc) {
+class GithubController @Inject()(repo: OrganizationRepository, cached: Cached, cc: ControllerComponents, ws: WSClient, configuration: play.api.Configuration)(implicit ec: ExecutionContext) extends AbstractController(cc) {
   private val logger = Logger(getClass)
   private val token = configuration.underlying.getString("github.token")
   /**
@@ -26,10 +30,16 @@ class GithubController @Inject()(cached: Cached, cc: ControllerComponents, ws: W
   def index() = Action { implicit request: Request[AnyContent] =>
     Ok("Welcome to Github API")
   }
-  def showOrgIndex(org: String) = Action {
-    logger.trace(s"showOrgIndex: org = $org")
-    Ok(s"showOrgIndex org = $org")
+
+  /**
+    * A REST endpoint that gets all the orgs as JSON.
+    */
+  def showOrgIndex() = Action.async { implicit request =>
+    repo.list().map { orgs =>
+      Ok(Json.toJson(orgs))
+    }
   }
+
 
   def showMembers(org: String) = Action.async { implicit request =>
     logger.trace(s"showMembers: org = $org")
@@ -51,15 +61,56 @@ class GithubController @Inject()(cached: Cached, cc: ControllerComponents, ws: W
     logger.trace(s"showMembers: org = $org")
     val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/repos").addHttpHeaders("Authorization" -> s"token $token")
 
-    complexRequest.get().map { response => Ok(response.json)}
+    complexRequest.get().map { response => {
+      Await.result(repo.updateStats(org, response.json).map { _ =>
+        logger.trace(s"showMembers: Status updated for org = $org")
+      }, 60 seconds)
+      Ok(response.json)
+      }
+    }
   }
 
   def showReposCached(org: String) = cached(implicit request => s"$org/repos", 30) {
+    showRepos(org)
+    /*
     Action.async { implicit request =>
       logger.trace(s"showReposCached: org = $org, token = $token")
       val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/repos").addHttpHeaders("Authorization" -> s"token $token")
 
       complexRequest.get().map { response => Ok(response.json)}
     }
+    */
+  }
+
+  /**
+    * The add person action.
+    *
+    * This is asynchronous, since we're invoking the asynchronous methods on PersonRepository.
+    */
+  def addOrganization(org: String) = Action.async { implicit request =>
+    repo.findOrg(org).map { o =>
+      o match {
+        case Some(o) => Ok(s"Organization $org exists")
+        case None => {
+          logger.trace(s"Creating organization $org")
+          Await.result(repo.create(org).map { _ =>
+            Ok(s"Organization $org added")
+          }, 30 seconds
+          )
+        }
+      }
+    }
+    /*
+    repo.findOrg(org).map(o => match {
+      case Some(o) => Ok(s"Organization $org exists")
+      case None => {
+        logger.trace(s"Creating organization $org")
+        repo.create(org).map { _ =>
+          Ok(s"Organization $org added")
+        }
+      }
+    }
+    )
+    */
   }
 }
