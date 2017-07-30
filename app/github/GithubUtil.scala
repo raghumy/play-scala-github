@@ -12,6 +12,9 @@ import play.api.libs.json._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import scala.util.matching.Regex
+import scala.collection.mutable._
+import scala.collection.mutable.ArrayBuffer
 
 /**
   * This class handles adding an org and updating data from Github. It uses application configuration
@@ -28,6 +31,7 @@ class GithubUtil @Inject()(repo: OrganizationRepository, datadb: OrgDataReposito
   private val logger = Logger(getClass)
   private val token = configuration.underlying.getString("github.token")
   private val duration = configuration.getMillis("github.update.interval")
+  private val keyValPattern: Regex = ".*<(.*)>; rel=\"next\".*".r
 
   /**
     * Update all orgs
@@ -80,6 +84,7 @@ class GithubUtil @Inject()(repo: OrganizationRepository, datadb: OrgDataReposito
     */
   def updateRepos(org: String) = {
     logger.trace(s"updateRepos: org = $org")
+    /*
     val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/repos").addHttpHeaders("Authorization" -> s"token $token")
 
     complexRequest.get().map { response => {
@@ -90,6 +95,13 @@ class GithubUtil @Inject()(repo: OrganizationRepository, datadb: OrgDataReposito
       }
     }
     }
+    */
+
+    val f = get_data(s"https://api.github.com/orgs/$org/repos")
+    f.map(json => {
+      datadb.updateReposJson(org, json)
+      repo.updateStats(org, json).map(_ => logger.trace(s"showMembers: Status updated for org = $org"))
+    })
   }
 
   /**
@@ -99,11 +111,77 @@ class GithubUtil @Inject()(repo: OrganizationRepository, datadb: OrgDataReposito
     */
   def updateMembers(org: String) = {
     logger.trace(s"updateMembers: org = $org")
+    /*
     val complexRequest: WSRequest = ws.url(s"https://api.github.com/orgs/$org/members").addHttpHeaders("Authorization" -> s"token $token")
 
     complexRequest.get().map { response => {
       datadb.updateMembersJson(org, response.json)
       }
     }
+    */
+    val f = get_data(s"https://api.github.com/orgs/$org/members")
+    f.map(json => datadb.updateMembersJson(org, json))
+  }
+
+  def test_ws = {
+    //val f = get_data("https://api.github.com/search/code?q=addClass+user:mozilla")
+    val f = get_data("https://api.github.com/orgs/parse-community/repos")
+    f.map(json => println(s"Got json list"))
+  }
+
+  /**
+    * Utility function to get the data. It retrieves up to 5 additional
+    * pages if necessary. Can be expanded at a later date for larger data sets
+    * TODO: Improve how JSON is combined. Current method requires a lot of memory
+    * @param initial_url
+    * @return
+    */
+  def get_data(initial_url: String):Future[JsValue] = Future {
+    var url = initial_url
+    var jsonList = new ListBuffer[JsValue]()
+    // Limit to 5 for now
+    for (i <- 1 to 5 if url != null) {
+      val wr: WSRequest = ws.url(url)
+        .addHttpHeaders("Authorization" -> s"token $token")
+      val f = wr.get()
+      val g = f.map(resp => {
+        logger.trace(s"Got result ${resp} for link ${url}")
+        val json = resp.json
+        jsonList += json
+        //println(s"Current length ${jsonList.length}")
+        val l = evaluate_header(resp)
+        l match {
+          case Some(link) => {
+            logger.trace(s"Next link $link")
+            url = link
+          }
+          case _ => {
+            //println("No link found")
+            url = null
+          }
+        }
+      })
+      Await.result(g, 30 seconds)
+    }
+    //println("Returning value")
+    val jsonArray = jsonList.reduceLeft((x, y) => x.as[JsArray] ++ y.as[JsArray])
+    //println("Finished combining jsonArray")
+
+    // Return the resulting array
+    jsonArray
+  }
+
+  def evaluate_header(resp: WSResponse): Option[String] = {
+    for (x <- resp.headers.get("Link")) {
+      logger.trace(s"Found link header $x")
+      for (y <- x) {
+        for (patternMatch <- keyValPattern.findAllMatchIn(y)) {
+          val link = patternMatch.group(1)
+          logger.trace(s"Found match key: $link")
+          return Some(link)
+        }
+      }
+    }
+    return None
   }
 }
