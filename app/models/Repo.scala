@@ -5,10 +5,24 @@ import java.sql.Timestamp
 import java.text.SimpleDateFormat
 
 
+/**
+  * Class that stores stats for an organization
+  * @param id
+  * @param name
+  * @param org
+  * @param forks
+  * @param last_updated
+  * @param open_issues
+  * @param stars
+  * @param watchers
+  */
 case class Repo(id: Long, name: String, org: String, forks: Int, last_updated: Timestamp, open_issues: Int, stars: Int, watchers: Int)
 
 object Repo {
 
+  /**
+    * Object used to convert timestamp to JSON
+    */
   implicit object timestampFormat extends Format[Timestamp] {
     val format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
     def reads(json: JsValue) = {

@@ -11,9 +11,9 @@ import models._
 import scala.concurrent.{ Future, ExecutionContext }
 
 /**
-  * A repository for people.
-  *
-  * @param dbConfigProvider The Play db config provider. Play will inject this for you.
+  * Repository of stats data for the org
+  * @param dbConfigProvider
+  * @param ec
   */
 @Singleton
 class RepoRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: ExecutionContext) {
@@ -27,7 +27,7 @@ class RepoRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(implic
   import profile.api._
 
   /**
-    * Here we define the table. It will have a name of organization
+    * Table definition
     */
   private class RepoTable(tag: Tag) extends Table[Repo](tag, "repos") {
 
@@ -50,11 +50,6 @@ class RepoRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(implic
 
     /**
       * This is the tables default "projection".
-      *
-      * It defines how the columns are converted to and from the Person object.
-      *
-      * In this case, we are simply passing the name parameters to the Repo case classes
-      * apply and unapply methods.
       */
     def * = (id, name, org, forks, last_updated, open_issues, stars, watchers) <> ((Repo.apply _).tupled, Repo.unapply)
   }

@@ -6,23 +6,38 @@ import play.api.inject.ApplicationLifecycle
 
 import scala.concurrent.{ExecutionContext, Future}
 import akka.actor._
+import play.api.Logger
 
 import scala.concurrent.duration._
 
-trait Say {
+trait Startup {
   def hello(): Unit
   def goodbye(): Unit
 }
 
+/**
+  * This class handles startup initialization. The main function of this class is to configure an
+  * asynchronous task that updates the repository with data for various orgs.
+  * It uses an github.update.interval application parameter for the duration.
+  *
+  * @param actorSystem
+  * @param appLifecycle
+  * @param util
+  * @param configuration
+  * @param ec
+  */
 @Singleton
-class SayImpl @Inject() (actorSystem: ActorSystem, appLifecycle: ApplicationLifecycle, util: GithubUtil)(implicit ec: ExecutionContext) extends Say {
+class StartupImpl @Inject()(actorSystem: ActorSystem, appLifecycle: ApplicationLifecycle, util: GithubUtil, configuration: play.api.Configuration)(implicit ec: ExecutionContext) extends Startup {
+  private val logger = Logger(getClass)
+
   override def hello(): Unit = {
-    println("Hello!")
-    actorSystem.scheduler.schedule(initialDelay = 0.seconds, interval = 1.minute) {
+    val d = Duration(configuration.getMillis("github.update.interval"), MILLISECONDS)
+    logger.error(s"Application started with update interval $d ")
+    actorSystem.scheduler.schedule(initialDelay = 0.seconds, interval = d) {
       util.updateOrgs()
     }
   }
-  override def goodbye(): Unit = println("Goodbye!")
+  override def goodbye(): Unit = logger.error("Goodbye!")
 
   // You can do this, or just explicitly call `hello()` at the end
   def start(): Unit = hello()

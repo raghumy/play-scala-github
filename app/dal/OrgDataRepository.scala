@@ -13,9 +13,9 @@ import models._
 import scala.concurrent.{ Future, ExecutionContext }
 
 /**
-  * A repository for people.
-  *
-  * @param dbConfigProvider The Play db config provider. Play will inject this for you.
+  * Class that holds JSON data for the org
+  * @param dbConfigProvider
+  * @param ec
   */
 @Singleton
 class OrgDataRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: ExecutionContext) {
@@ -29,14 +29,13 @@ class OrgDataRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(imp
   import profile.api._
 
   /**
-    * Here we define the table. It will have a name of organization
+    * Table definition
     */
   private class OrgDataTable(tag: Tag) extends Table[OrgData](tag, "orgs_data")  {
 
     /** The ID column, which is the primary key, and auto incremented */
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
 
-    /** The name column is the primary key*/
     def org = column[String]("org")
 
     def members_json = column[Option[String]]("members_json", O.SqlType("CLOB"))
@@ -45,11 +44,6 @@ class OrgDataRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(imp
 
     /**
       * This is the tables default "projection".
-      *
-      * It defines how the columns are converted to and from the Person object.
-      *
-      * In this case, we are simply passing the name parameters to the Organization case classes
-      * apply and unapply methods.
       */
     def * = (id, org, members_json, repos_json) <> ((OrgData.apply _).tupled, OrgData.unapply)
   }
@@ -63,7 +57,7 @@ class OrgDataRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(imp
     orgdata returning orgdata.map(_.id) += o
 
   def create(org: String) = {
-    System.out.println("Creating org_data row")
+    logger.trace("Creating org_data row")
     insert(OrgData(0, org, Some("temp"), Some("temp")))
   }
 

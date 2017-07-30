@@ -16,7 +16,7 @@ class Module extends AbstractModule {
   override def configure() = {
     // We bind the implementation to the interface (trait) as an eager singleton,
     // which means it is bound immediately when the application starts.
-    bind(classOf[Say]).to(classOf[SayImpl]).asEagerSingleton()
+    bind(classOf[Startup]).to(classOf[StartupImpl]).asEagerSingleton()
   }
 }
 

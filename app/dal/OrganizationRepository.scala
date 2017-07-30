@@ -16,9 +16,11 @@ import slick.dbio.DBIOAction
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
-  * A repository for people.
-  *
-  * @param dbConfigProvider The Play db config provider. Play will inject this for you.
+  * Repository for the org
+  * @param dbConfigProvider
+  * @param repodb
+  * @param datadb
+  * @param ec
   */
 @Singleton
 class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider, repodb: RepoRepository, datadb: OrgDataRepository)(implicit ec: ExecutionContext) {
@@ -32,14 +34,13 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
   import profile.api._
 
   /**
-    * Here we define the table. It will have a name of organization
+    * Organization table
     */
   private class OrganizationTable(tag: Tag) extends Table[Organization](tag, "orgs")  {
 
     /** The ID column, which is the primary key, and auto incremented */
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
 
-    /** The name column is the primary key*/
     def name = column[String]("name")
 
     def last_updated = column[Timestamp]("last_updated", O.Default(new Timestamp(0L)))
@@ -48,11 +49,6 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
 
     /**
       * This is the tables default "projection".
-      *
-      * It defines how the columns are converted to and from the Person object.
-      *
-      * In this case, we are simply passing the name parameters to the Organization case classes
-      * apply and unapply methods.
       */
     def * = (id, name, last_updated, state) <> ((Organization.apply _).tupled, Organization.unapply)
   }
@@ -65,6 +61,11 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
   def insert(o: Organization) =
     organization returning organization.map(_.id) += o
 
+  /**
+    * Create a new org
+    * @param org
+    * @return
+    */
   def create(org: String) = insert(Organization(0, org, new Timestamp(new java.util.Date().getTime()), None))
 
   /**
@@ -77,21 +78,46 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
   private def _findByName(org: String): DBIO[Option[Organization]] =
     organization.filter(_.name === org).result.headOption
 
+  /**
+    * Find an org
+    * @param org
+    * @return
+    */
   def findOrg(org: String): Future[Option[Organization]] = db.run(_findByName(org))
 
+  /**
+    * Get JSON data for this org
+    * @param org
+    * @return
+    */
   def getOrgData(org: String) = datadb.findByOrg(org)
 
+  /**
+    * Helper function to add both the org and it's data
+    * @param org
+    * @return
+    */
   def addOrg(org: String) = Future {
     db.run(create(org) andThen
       datadb.create(org))
   }
 
+  /**
+    * Update the last time the stats where updated
+    * @param org
+    * @return
+    */
   def updateLastUpdated(org: String) = db.run {
     organization.filter(_.name === org).map(_.last_updated).update(new Timestamp(new java.util.Date().getTime()))
   }
 
+  /**
+    * Helper function to update stats for this org.
+    * @param org
+    * @param json
+    * @return
+    */
   def updateStats(org: String, json: JsValue) = Future {
-
     // Need to figure out if we can do this once
     implicit object timestampFormat extends Format[Timestamp] {
       val format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
@@ -124,6 +150,8 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
 
     logger.trace("All rows inserted")
   }
+
+  // List of functions to get stats
 
   def getStats(org: String) = repodb.findByOrg(org)
 
