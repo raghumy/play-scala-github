@@ -27,6 +27,7 @@ import scala.util.{Failure, Success}
 class GithubUtil @Inject()(repo: OrganizationRepository, datadb: OrgDataRepository, ws: WSClient, configuration: play.api.Configuration)(implicit ec: ExecutionContext) {
   private val logger = Logger(getClass)
   private val token = configuration.underlying.getString("github.token")
+  private val duration = configuration.getMillis("github.update.interval")
 
   /**
     * Update all orgs
@@ -34,7 +35,10 @@ class GithubUtil @Inject()(repo: OrganizationRepository, datadb: OrgDataReposito
   def updateOrgs(): Unit = {
     // Get a list of orgs
     // For each repo, update the map
-    repo.list().map(orgs => orgs.map(o => updateOrg(o.name)))
+    val t = new java.sql.Timestamp(new java.util.Date().getTime() - duration)
+    logger.trace(s"Getting orgs with last_update < $t (${t.getTime})")
+    //repo.list().map(orgs => orgs.map(o => updateOrg(o.name)))
+    repo.needUpdate(t).map(orgs => orgs.map(o => updateOrg(o.name)))
   }
 
   /**
@@ -50,6 +54,14 @@ class GithubUtil @Inject()(repo: OrganizationRepository, datadb: OrgDataReposito
     updateOrg(org)
   }
 
+  def updateOrgHandler(org: String): Unit = {
+    val f = repo.updateStateIfEmpty(org, Some("Updating"))
+    f.onComplete({
+      case Success(v) => updateOrg(org)
+      case Failure(t) => logger.trace(s"Org $org cannot be updated because of $t")
+    })
+  }
+
   /**
     * Update a single org
     * @param org
@@ -58,6 +70,7 @@ class GithubUtil @Inject()(repo: OrganizationRepository, datadb: OrgDataReposito
     logger.trace(s"updateOrg: org = $org")
     updateRepos(org)
     updateMembers(org)
+    repo.updateState(org, None)
   }
 
   /**

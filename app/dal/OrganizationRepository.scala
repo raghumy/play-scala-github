@@ -78,6 +78,9 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
   private def _findByName(org: String): DBIO[Option[Organization]] =
     organization.filter(_.name === org).result.headOption
 
+  def needUpdate(t: Timestamp): Future[List[Organization]] =
+    db.run(organization.filter(_.state.isEmpty).filter(_.last_updated < t).to[List].result)
+
   /**
     * Find an org
     * @param org
@@ -109,6 +112,14 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
     */
   def updateLastUpdated(org: String) = db.run {
     organization.filter(_.name === org).map(_.last_updated).update(new Timestamp(new java.util.Date().getTime()))
+  }
+
+  def updateState(org: String, s: Option[String]) = db.run {
+    organization.filter(_.name === org).map(_.state).update(s)
+  }
+
+  def updateStateIfEmpty(org: String, s: Option[String]) = db.run {
+    organization.filter(_.name === org).filter(_.state.isEmpty).map(_.state).update(s)
   }
 
   /**
