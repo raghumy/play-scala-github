@@ -62,6 +62,10 @@ class RepoRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(implic
   def findByOrg(org: String): Future[List[Repo]] =
     db.run(repos.filter(_.org === org).to[List].result)
 
+  def delete(org: String) = db.run {
+    repos.filter(_.org === org).delete
+  }
+
   def statsByForks(org: String, n: Int): Future[List[Repo]] =
     db.run(repos.filter(_.org === org).sortBy(_.forks.desc).take(n).to[List].result)
 

@@ -25,6 +25,9 @@ class GithubRouter @Inject()(controller: GithubController) extends SimpleRouter 
     case POST(p"/orgs/$org") =>
       controller.addOrganization(org)
 
+    case DELETE(p"/orgs/$org") =>
+      controller.deleteOrganization(org)
+
     case GET(p"/orgs/$org/members") =>
       controller.showMembers(org)
 

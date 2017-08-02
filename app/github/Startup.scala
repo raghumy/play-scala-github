@@ -31,8 +31,8 @@ class StartupImpl @Inject()(actorSystem: ActorSystem, appLifecycle: ApplicationL
   private val logger = Logger(getClass)
 
   override def hello(): Unit = {
-    val d = Duration(configuration.getMillis("github.update.interval"), MILLISECONDS)
-    logger.error(s"Application started with update interval $d ")
+    val d = Duration(configuration.getMillis("github.check.interval"), MILLISECONDS)
+    logger.error(s"Application started with check interval $d ")
     //util.test_ws
     actorSystem.scheduler.schedule(initialDelay = 0.seconds, interval = d) {
       util.updateOrgs()

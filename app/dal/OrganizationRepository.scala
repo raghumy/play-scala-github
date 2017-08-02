@@ -122,6 +122,10 @@ class OrganizationRepository @Inject() (dbConfigProvider: DatabaseConfigProvider
     organization.filter(_.name === org).filter(_.state.isEmpty).map(_.state).update(s)
   }
 
+  def delete(org: String) = db.run {
+    organization.filter(_.name === org).delete
+  }
+
   /**
     * Helper function to update stats for this org.
     * @param org

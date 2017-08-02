@@ -14,7 +14,10 @@ CREATE TABLE orgs_data (
     org varchar(255) NOT NULL UNIQUE,
     members_json CLOB,
     repos_json CLOB,
-    FOREIGN KEY(org) REFERENCES orgs(org)
+    CONSTRAINT fk_org
+        FOREIGN KEY (org)
+        REFERENCES orgs(org)
+        ON DELETE CASCADE
 );
 
 CREATE TABLE repos (
@@ -26,7 +29,10 @@ CREATE TABLE repos (
     open_issues integer,
     stars integer,
     watchers integer,
-    FOREIGN KEY(org) REFERENCES orgs(org)
+    CONSTRAINT fk_org
+        FOREIGN KEY (org)
+        REFERENCES orgs(org)
+        ON DELETE CASCADE
 );
 
 # --- !Downs

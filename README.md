@@ -31,7 +31,8 @@ would be a better fit.
 
 * Setup an environment variable called GITHUB_TOKEN
 * Configure property `slick.dbs.default.db.url` in `conf/application.conf`. This will be the name of the sqlite database file
-* Update frequency is configured in `conf/application.conf` with property github.update.interval. This defaults to 2 minutes.
+* Update frequency is configured in `conf/application.conf` with property github.update.interval. This defaults to 5 minutes.
+* Another property defines how often to check for updates github.check.interval. This defaults to 2 minutes.
 ## Running
 
 * Run `sbt run`. This should start the play framework

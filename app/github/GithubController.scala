@@ -115,6 +115,14 @@ class GithubController @Inject()(repo: OrganizationRepository, cc: ControllerCom
     * @return
     */
   def addOrganization(org: String) = Action.async { implicit request =>
+    val f = util.addOrg(org)
+    for {
+      x <- f
+    } yield {
+      println(s"$x")
+      Ok(s"Organization $org added")
+    }
+    /*
     repo.findOrg(org).map { o =>
       o match {
         case Some(o) => Ok(s"Organization $org exists")
@@ -122,8 +130,17 @@ class GithubController @Inject()(repo: OrganizationRepository, cc: ControllerCom
           logger.trace(s"Creating organization $org")
           Await.result(util.addOrg(org), 1 minute)
           Ok(s"Organization $org added")
-        }
+
       }
+    }
+    */
+  }
+
+  def deleteOrganization(org: String) = Action.async { implicit request =>
+    logger.trace(s"Delete $org organization")
+    util.deleteOrg(org).map { _ =>
+      logger.trace(s"$org organization deleted")
+      Ok(s"Organization $org deleted")
     }
   }
 }

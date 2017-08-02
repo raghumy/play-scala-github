@@ -61,6 +61,10 @@ class OrgDataRepository @Inject() (dbConfigProvider: DatabaseConfigProvider)(imp
     insert(OrgData(0, org, Some("temp"), Some("temp")))
   }
 
+  def delete(org: String) = db.run {
+    orgdata.filter(_.org === org).delete
+  }
+
   def updateMembersJson(org: String, json: JsValue) = db.run {
     orgdata.filter(_.org === org).map(_.members_json).update(Some(json.toString()))
   }
