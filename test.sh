@@ -12,8 +12,14 @@ N="3"
 printf "Adding a new org:\n"
 curl -X PUT "$BASE_URL/orgs/$ORG"
 
+printf "\nCalling add org:\n"
+curl -X PUT "$BASE_URL/orgs/$ORG"
+
 printf "\nCalling list of orgs:\n"
 curl "$BASE_URL/orgs"
+
+# Wait for the org to get updated
+sleep 10
 
 printf "\nGetting a list of members:\n"
 curl "$BASE_URL/orgs/$ORG/members"
@@ -35,5 +41,8 @@ curl "$BASE_URL/views/$ORG/top/$N/stars"
 
 printf "\nGetting top $N watchers:\n"
 curl "$BASE_URL/views/$ORG/top/$N/watchers"
+
+#printf "\nDelete $ORG:\n"
+#curl -X DELETE "$BASE_URL/orgs/$ORG"
 
 printf "\nDone\n"

@@ -118,22 +118,11 @@ class GithubController @Inject()(repo: OrganizationRepository, cc: ControllerCom
     val f = util.addOrg(org)
     for {
       x <- f
+      msg <- x
     } yield {
-      println(s"$x")
-      Ok(s"Organization $org added")
+      logger.trace(msg)
+      Ok(msg)
     }
-    /*
-    repo.findOrg(org).map { o =>
-      o match {
-        case Some(o) => Ok(s"Organization $org exists")
-        case None => {
-          logger.trace(s"Creating organization $org")
-          Await.result(util.addOrg(org), 1 minute)
-          Ok(s"Organization $org added")
-
-      }
-    }
-    */
   }
 
   def deleteOrganization(org: String) = Action.async { implicit request =>

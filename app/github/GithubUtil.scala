@@ -57,34 +57,19 @@ class GithubUtil @Inject()(repo: OrganizationRepository, datadb: OrgDataReposito
 
     val p = Promise[String]()
 
-    for (o <- f) yield(p.success(s"Organization $org exists"))
-
-    logger.trace(s"Creating organization $org")
-    for {
-      _ <- repo.addOrg(org)
-    } yield {
-      updateOrg(org)
-      p.success(s"Organization $org added")
-    }
-
-    p.future
-
-    /*
-    repo.findOrg(org).map { o =>
-      o match {
-        case Some(o) => s"Organization $org exists"
-        case None => {
-          logger.trace(s"Creating organization $org")
-          for {
-            _ <- repo.addOrg(org)
-          } yield {
-            updateOrg(org)
-            s"Organization $org added"
-          }
+    f.map(x => x match {
+      case Some(o) => p.success(s"Organization $org exists")
+      case None => {
+        for {
+          _ <- repo.addOrg(org)
+        } yield {
+          updateOrg(org)
+          p.success(s"Organization $org added")
         }
       }
-    }
-    */
+    })
+
+    p.future
   }
 
   def deleteOrg(org: String) = Future {
@@ -233,7 +218,7 @@ class GithubUtil @Inject()(repo: OrganizationRepository, datadb: OrgDataReposito
       resp <- f
       if (resp.status == 200)
     } yield {
-      logger.trace(s"get_data: Got result ${resp} for link ${url}")
+      //logger.trace(s"get_data: Got result ${resp} for link ${url}")
       val z = evaluate_response(resp)
       z onComplete {
         case Success(json) => p.success(json)
